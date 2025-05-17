@@ -4,6 +4,11 @@ import pool from '@/lib/db';
 import fs from 'fs';
 import path from 'path';
 
+type CallbackItem = {
+  Name: string;
+  Value: string | number;
+};
+
 export async function POST(req: NextRequest) {
   const forwarded = req.headers.get('x-forwarded-for');
   const ip = forwarded?.split(',')[0]?.trim() || 'unknown';
@@ -25,16 +30,10 @@ export async function POST(req: NextRequest) {
     CallbackMetadata,
   } = result;
 
-type CallbackItem = {
-  Name: string;
-  Value: string | number;
-};
-
-const items = CallbackMetadata?.Item as CallbackItem[] | undefined;
-
-const Amount = items?.find(i => i.Name === 'Amount')?.Value || 0;
-const MpesaReceiptNumber = items?.find(i => i.Name === 'MpesaReceiptNumber')?.Value || '';
-const PhoneNumber = items?.find(i => i.Name === 'PhoneNumber')?.Value || '';
+  const items = CallbackMetadata?.Item as CallbackItem[] | undefined;
+  const Amount = items?.find(i => i.Name === 'Amount')?.Value || 0;
+  const MpesaReceiptNumber = items?.find(i => i.Name === 'MpesaReceiptNumber')?.Value || '';
+  const PhoneNumber = items?.find(i => i.Name === 'PhoneNumber')?.Value || '';
 
   try {
     const conn = await pool.getConnection();
@@ -52,11 +51,8 @@ const PhoneNumber = items?.find(i => i.Name === 'PhoneNumber')?.Value || '';
 
     return NextResponse.json({ success: true });
   } catch (err) {
-  const error = err instanceof Error ? err.message : String(err);
-  console.error(error);
-  return NextResponse.json(
-    { error: "Failed to initiate payment" },
-    { status: 500 }
-  );
-}
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    fs.appendFileSync(path.join('logs', 'errors.log'), `${new Date().toISOString()} | ${errorMsg}\n`);
+    return NextResponse.json({ error: 'DB error' }, { status: 500 });
+  }
 }
