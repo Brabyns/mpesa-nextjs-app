@@ -11,7 +11,8 @@ export async function POST(req: NextRequest) {
       }
       return phone;
     }
-    const result = await initiateSTKPush(phone, amount);
+    const formattedPhone = formatPhone(phone);
+    const result = await initiateSTKPush(formattedPhone , amount);
     return NextResponse.json({ message: "STK push initiated", data: result });
   } catch (err: any) {
     console.error(err);

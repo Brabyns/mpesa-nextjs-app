@@ -25,9 +25,16 @@ export async function POST(req: NextRequest) {
     CallbackMetadata,
   } = result;
 
-  const Amount = CallbackMetadata?.Item?.find((i: any) => i.Name === 'Amount')?.Value || 0;
-  const MpesaReceiptNumber = CallbackMetadata?.Item?.find((i: any) => i.Name === 'MpesaReceiptNumber')?.Value || '';
-  const PhoneNumber = CallbackMetadata?.Item?.find((i: any) => i.Name === 'PhoneNumber')?.Value || '';
+type CallbackItem = {
+  Name: string;
+  Value: string | number;
+};
+
+const items = CallbackMetadata?.Item as CallbackItem[] | undefined;
+
+const Amount = items?.find(i => i.Name === 'Amount')?.Value || 0;
+const MpesaReceiptNumber = items?.find(i => i.Name === 'MpesaReceiptNumber')?.Value || '';
+const PhoneNumber = items?.find(i => i.Name === 'PhoneNumber')?.Value || '';
 
   try {
     const conn = await pool.getConnection();
@@ -44,8 +51,12 @@ export async function POST(req: NextRequest) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    fs.appendFileSync(path.join('logs', 'errors.log'), `${new Date().toISOString()} | ${err.message}\n`);
-    return NextResponse.json({ error: 'DB error' }, { status: 500 });
-  }
+  } catch (err) {
+  const error = err instanceof Error ? err.message : String(err);
+  console.error(error);
+  return NextResponse.json(
+    { error: "Failed to initiate payment" },
+    { status: 500 }
+  );
+}
 }
